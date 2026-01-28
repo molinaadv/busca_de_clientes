@@ -1,18 +1,21 @@
 import io
 import re
 from pathlib import Path
-
 import pandas as pd
 import streamlit as st
 
-# ===============================
-# CONFIG (deve ser o 1º comando Streamlit)
-# ===============================
-st.set_page_config(page_title="Molina | Busca de Clientes", page_icon="🔎", layout="wide")
+# ======================================================
+# CONFIGURAÇÃO
+# ======================================================
+st.set_page_config(
+    page_title="Molina | Busca de Clientes",
+    page_icon="🔎",
+    layout="wide"
+)
 
-# ===============================
-# LOGIN (usuário/senha)
-# ===============================
+# ======================================================
+# LOGIN
+# ======================================================
 USUARIO_CORRETO = "molina"
 SENHA_CORRETA = "senha@senha"
 
@@ -23,9 +26,8 @@ def verificar_login():
     if st.session_state["logado"]:
         return
 
-    # Tela de login (simples e objetiva)
     st.markdown("## 🔐 Acesso restrito")
-    st.markdown("Sistema exclusivo do escritório **Molina Advogados**")
+    st.markdown("Sistema exclusivo do **Molina Advogados**")
 
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
@@ -41,221 +43,130 @@ def verificar_login():
 
 verificar_login()
 
-# ===============================
+# ======================================================
 # BASE FIXA
-# ===============================
+# ======================================================
 BASE_ARQUIVO = "Relatorio Pessoa Fisica - LegalOne.xlsx"
 
-# ===============================
-# ESTILO / MARCA
-# ===============================
-CSS = """
-<style>
-.stApp { background: linear-gradient(180deg, rgba(245,247,251,1) 0%, rgba(255,255,255,1) 55%, rgba(245,247,251,1) 100%); }
-#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-.block-container {padding-top: 1.2rem; padding-bottom: 2.5rem;}
-.mlp-card { background: rgba(255,255,255,0.92); border: 1px solid rgba(15,23,42,0.08);
-  border-radius: 18px; padding: 16px 16px 14px 16px; box-shadow: 0 10px 30px rgba(2, 8, 23, 0.06); }
-.mlp-section-title {font-size: 1.05rem; font-weight: 700; color: rgba(15,23,42,0.92); margin: 6px 0 10px 0;}
-.mlp-muted {color: rgba(15,23,42,0.60);}
-.mlp-kpi-title {font-size: 0.85rem; color: rgba(15,23,42,0.70); margin-bottom: 2px;}
-.mlp-kpi-value {font-size: 1.55rem; font-weight: 700; color: rgba(15,23,42,0.92);}
-.mlp-kpi-sub {font-size: 0.80rem; color: rgba(15,23,42,0.55); margin-top: 2px;}
-hr {border: none; border-top: 1px solid rgba(15,23,42,0.08); margin: 16px 0;}
-</style>
-"""
-st.markdown(CSS, unsafe_allow_html=True)
-
-# ===============================
-# HELPERS
-# ===============================
-def to_excel_bytes(df: pd.DataFrame) -> bytes:
-    out = io.BytesIO()
-    with pd.ExcelWriter(out, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Resultado")
-    return out.getvalue()
-
-def norm_cpf(val) -> str:
-    if val is None:
-        return ""
-    s = str(val)
-    if s.lower() in ("nan", "none"):
-        return ""
-    return re.sub(r"\D", "", s)
-
-def norm_name(val) -> str:
-    if val is None:
-        return ""
-    s = str(val)
-    if s.lower() in ("nan", "none"):
-        return ""
-    return s.strip().lower()
-
-def kpi_card(title: str, value: str, sub: str = ""):
-    st.markdown(
-        f"""
-        <div class="mlp-card">
-            <div class="mlp-kpi-title">{title}</div>
-            <div class="mlp-kpi-value">{value}</div>
-            <div class="mlp-kpi-sub">{sub}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# ===============================
-# HEADER
-# ===============================
-h1, h2 = st.columns([1.2, 2.8], vertical_alignment="center")
-with h1:
-    st.image("assets/logo.png", use_container_width=True)
-with h2:
-    st.markdown("## Busca de Clientes (Nome / CPF)")
-    st.markdown(
-        '<span class="mlp-muted">Base fixa do Legal One → pesquise por <b>nome</b> e/ou <b>CPF</b> → exporte o resultado.</span>',
-        unsafe_allow_html=True,
-    )
-st.markdown("<hr/>", unsafe_allow_html=True)
-
-# ===============================
-# SIDEBAR
-# ===============================
-with st.sidebar:
-    st.image("assets/logo.png", use_container_width=True)
-    st.markdown("### Base fixa")
-    st.caption("O sistema lê automaticamente o Excel na pasta do sistema.")
-    st.code(BASE_ARQUIVO)
-    st.markdown("### Configurações")
-    match_mode = st.radio("Modo de busca por Nome", ["Contém (recomendado)", "Exato"], index=0)
-    show_sensitive = st.checkbox("Mostrar CPF completo na tela", value=False)
-
-# ===============================
-# LOAD BASE
-# ===============================
-base_path = Path(BASE_ARQUIVO)
-if not base_path.exists():
-    st.error("Não encontrei o arquivo base do Legal One na pasta do sistema.")
-    st.markdown(
-        f'<div class="mlp-card"><div class="mlp-section-title">Como corrigir</div>'
-        f'<div class="mlp-muted">'
-        f'1) Coloque o arquivo <b>{BASE_ARQUIVO}</b> na <b>mesma pasta</b> do app.py<br/>'
-        f'2) Recarregue a página<br/>'
-        f'</div></div>',
-        unsafe_allow_html=True,
-    )
+arquivo = Path(BASE_ARQUIVO)
+if not arquivo.exists():
+    st.error("Arquivo da base não encontrado.")
     st.stop()
 
 @st.cache_data(ttl=60)
-def load_base(path: str) -> pd.DataFrame:
-    return pd.read_excel(path)
+def carregar_base(path):
+    df = pd.read_excel(path)
+    df.columns = df.columns.map(lambda x: str(x).strip())
+    return df
 
-try:
-    df = load_base(str(base_path))
-    cols = list(df.columns)
+df = carregar_base(str(arquivo))
 
-    # Detectar colunas por “chute” (usuário pode escolher)
-    def find_col(keywords):
-        for c in cols:
-            lc = str(c).strip().lower()
-            if any(k in lc for k in keywords):
-                return c
-        return None
+# ======================================================
+# FUNÇÕES
+# ======================================================
+def norm_cpf(val):
+    if pd.isna(val):
+        return ""
+    return re.sub(r"\D", "", str(val))
 
-    detected_name = find_col(["nome", "cliente", "envolvido", "parte"])
-    detected_cpf = find_col(["cpf", "documento", "doc"])
+def norm_text(val):
+    if pd.isna(val):
+        return ""
+    return str(val).strip().lower()
 
-    c1, c2 = st.columns(2)
-    with c1:
-        name_col = st.selectbox("Coluna de Nome", options=cols, index=cols.index(detected_name) if detected_name in cols else 0)
-    with c2:
-        cpf_default_idx = cols.index(detected_cpf) if detected_cpf in cols else min(1, len(cols) - 1)
-        cpf_col = st.selectbox("Coluna de CPF", options=cols, index=cpf_default_idx)
+def detectar_coluna(colunas, palavras):
+    for c in colunas:
+        nome = str(c).lower().strip()
+        if all(p in nome for p in palavras):
+            return c
+    return None
 
-    # Helper cols (somente em memória)
-    work = df.copy()
-    work["_NOME_NORM"] = work[name_col].apply(norm_name)
-    work["_CPF_NORM"] = work[cpf_col].apply(norm_cpf)
+# ======================================================
+# DETECTAR COLUNAS
+# ======================================================
+cols = list(df.columns)
 
-    st.markdown('<div class="mlp-section-title">Buscar</div>', unsafe_allow_html=True)
-    q1, q2, q3 = st.columns([2.2, 1.4, 1.4])
-    with q1:
-        name_query = st.text_input("Nome (ou parte do nome)", placeholder="Ex.: Maria, João Silva...")
-    with q2:
-        cpf_query = st.text_input("CPF (somente números ou com pontos/traço)", placeholder="Ex.: 123.456.789-00")
-    with q3:
-        limit = st.number_input("Limite de resultados", min_value=10, max_value=5000, value=200, step=10)
+col_nome = detectar_coluna(cols, ["nome"])
+col_cpf = detectar_coluna(cols, ["cpf"])
+col_senha_inss = detectar_coluna(cols, ["senha", "inss"])
 
-    nq = norm_name(name_query)
-    cq = norm_cpf(cpf_query)
+# ======================================================
+# HEADER
+# ======================================================
+c1, c2 = st.columns([1, 3])
+with c1:
+    st.image("assets/logo.png", use_container_width=True)
+with c2:
+    st.markdown("## 🔎 Busca de Clientes — Legal One")
+    st.caption("Pesquisa por Nome ou CPF")
 
-    # Sem filtro: não lista base inteira
-    if not nq and not cq:
-        st.info("Digite um Nome e/ou CPF para buscar. (Sem filtro, o sistema não lista a base inteira.)")
-        st.markdown("<hr/>", unsafe_allow_html=True)
-        k1, k2 = st.columns(2)
-        with k1:
-            kpi_card("Registros na base", f"{len(df):,}".replace(",", "."), "Total no Excel")
-        with k2:
-            kpi_card("Atualização", "Automática", "Recarrega a cada 60s (se o arquivo mudar)")
-        st.stop()
+# ======================================================
+# BUSCA
+# ======================================================
+nome_busca = st.text_input("Nome do cliente")
+cpf_busca = st.text_input("CPF")
 
-    # Filtrar
-    out = work.copy()
-    filters_used = []
+df["_NOME_N"] = df[col_nome].apply(norm_text)
+df["_CPF_N"] = df[col_cpf].apply(norm_cpf)
 
-    if nq:
-        filters_used.append("Nome")
-        if match_mode.startswith("Contém"):
-            out = out[out["_NOME_NORM"].str.contains(re.escape(nq), na=False)]
-        else:
-            out = out[out["_NOME_NORM"] == nq]
+resultado = df.copy()
 
-    if cq:
-        filters_used.append("CPF")
-        out = out[out["_CPF_NORM"] == cq]
+if nome_busca:
+    resultado = resultado[
+        resultado["_NOME_N"].str.contains(norm_text(nome_busca), na=False)
+    ]
 
-    export_df = out.drop(columns=["_NOME_NORM", "_CPF_NORM"], errors="ignore").copy()
-    display_df = export_df.copy()
+if cpf_busca:
+    resultado = resultado[
+        resultado["_CPF_N"] == norm_cpf(cpf_busca)
+    ]
 
-    # ===============================
-    # SENHA DO INSS (2º card)
-    # ===============================
-    col_senha_inss = "SENHA INSS"  # nome exato da coluna na planilha
-    senha_inss_valor = "—"
-    if col_senha_inss in export_df.columns and len(export_df) > 0:
-        senha_inss_valor = str(export_df.iloc[0][col_senha_inss])
+export_df = resultado.drop(columns=["_NOME_N", "_CPF_N"], errors="ignore")
 
-    # Mascarar CPF na tela (independente da Senha INSS)
-    if (not show_sensitive) and (cpf_col in display_df.columns):
-        def mask(val):
-            d = norm_cpf(val)
-            if len(d) == 11:
-                return f"{d[:3]}.***.***-{d[-2:]}"
-            return "***"
-        display_df[cpf_col] = display_df[cpf_col].apply(mask)
+# ======================================================
+# SENHA INSS — PRIMEIRO CAMPO PREENCHIDO
+# ======================================================
+senha_inss_valor = "—"
 
-    # KPIs (ordem pedida)
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        kpi_card("Registros na base", f"{len(df):,}".replace(",", "."), "Total no Excel")
-    with k2:
-        kpi_card("Senha do INSS", senha_inss_valor, "Campo: SENHA INSS")
-    with k3:
-        kpi_card("Resultados", f"{len(display_df):,}".replace(",", "."), "Após filtros")
-    with k4:
-        kpi_card("Filtros usados", ", ".join(filters_used) if filters_used else "Nenhum", "Critérios de busca")
+if col_senha_inss and len(export_df) > 0:
+    serie = export_df[col_senha_inss].dropna()
+    serie = serie.astype(str).str.strip()
+    serie = serie[
+        ~serie.str.lower().isin(["", "nan", "none", "-", "null"])
+    ]
 
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown('<div class="mlp-section-title">Resultados</div>', unsafe_allow_html=True)
-    st.dataframe(display_df.head(int(limit)), use_container_width=True, height=520)
+    if len(serie) > 0:
+        senha_inss_valor = serie.iloc[0]
 
-    st.download_button(
-        "⬇️ Baixar Excel (resultado filtrado)",
-        data=to_excel_bytes(export_df),
-        file_name="resultado_busca_clientes.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+# ======================================================
+# DASHBOARD
+# ======================================================
+st.markdown("---")
+k1, k2, k3 = st.columns(3)
 
-except Exception as e:
-    st.error(f"Erro ao ler/processar a base do Excel: {e}")
+with k1:
+    st.metric("Registros na base", len(df))
+
+with k2:
+    st.metric("Senha do INSS", senha_inss_valor)
+
+with k3:
+    st.metric("Resultados", len(export_df))
+
+# ======================================================
+# RESULTADOS
+# ======================================================
+st.markdown("### Resultados")
+st.dataframe(export_df, use_container_width=True, height=520)
+
+def gerar_excel(df_):
+    out = io.BytesIO()
+    with pd.ExcelWriter(out, engine="openpyxl") as writer:
+        df_.to_excel(writer, index=False)
+    return out.getvalue()
+
+st.download_button(
+    "⬇️ Baixar resultado em Excel",
+    data=gerar_excel(export_df),
+    file_name="resultado_busca.xlsx"
+)
