@@ -85,7 +85,7 @@ h1, h2 = st.columns([1.2, 2.8])
 with h1:
     st.image("assets/logo.png", use_container_width=True)
 with h2:
-    st.markdown("## Busca de Clientes (Legal One)")
+    st.markdown("## Busca de Clientes (DataJuri)")
     st.markdown("<span style='color:#64748b'>Consulta por Nome ou CPF</span>", unsafe_allow_html=True)
 
 st.markdown("---")
