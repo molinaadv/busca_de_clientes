@@ -151,7 +151,10 @@ def load_base(path: str) -> pd.DataFrame:
 
 try:
     df = load_base(str(base_path))
+    df.columns = df.columns.map(lambda x: str(x).strip())
+
     cols = list(df.columns)
+
 
     # Detectar colunas por “chute” (usuário pode escolher)
     def find_col(keywords):
@@ -217,22 +220,29 @@ try:
     export_df = out.drop(columns=["_NOME_NORM", "_CPF_NORM"], errors="ignore").copy()
     display_df = export_df.copy()
 
-    # ===============================
-    # SENHA DO INSS (2º card)
-    # ===============================
-    col_senha_inss = "SENHA INSS"  # nome exato da coluna na planilha
-    senha_inss_valor = "—"
-    if col_senha_inss in export_df.columns and len(export_df) > 0:
-        senha_inss_valor = str(export_df.iloc[0][col_senha_inss])
+   # ===============================
+# SENHA DO INSS (2º card) - auto detect
+# ===============================
+def find_col_contains(all_cols, must_have):
+    for c in all_cols:
+        lc = str(c).strip().lower()
+        if all(k in lc for k in must_have):
+            return c
+    return None
 
-    # Mascarar CPF na tela (independente da Senha INSS)
-    if (not show_sensitive) and (cpf_col in display_df.columns):
-        def mask(val):
-            d = norm_cpf(val)
-            if len(d) == 11:
-                return f"{d[:3]}.***.***-{d[-2:]}"
-            return "***"
-        display_df[cpf_col] = display_df[cpf_col].apply(mask)
+col_senha_inss = find_col_contains(export_df.columns, ["senha", "inss"])
+
+senha_inss_valor = "—"
+
+if col_senha_inss and (col_senha_inss in export_df.columns) and len(export_df) > 0:
+    s = export_df[col_senha_inss].copy()
+    s = s.dropna()
+    s = s.astype(str).str.replace("\u00A0", " ", regex=False).str.strip()  # remove espaço invisível
+    s = s[~s.str.lower().isin(["", "nan", "none", "null", "-"])]
+
+    if len(s) > 0:
+        senha_inss_valor = s.iloc[0]
+
 
     # KPIs (ordem pedida)
     st.markdown("<hr/>", unsafe_allow_html=True)
