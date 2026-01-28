@@ -5,6 +5,42 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+import hashlib
+
+# ===============================
+# LOGIN DO SISTEMA
+# ===============================
+
+USUARIO_CORRETO = "molina"
+SENHA_CORRETA = "senha@senha"
+
+def tela_login():
+    st.markdown("## 🔐 Acesso restrito")
+    st.markdown("Sistema exclusivo do escritório Molina Advogados")
+
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+        if usuario == USUARIO_CORRETO and senha == SENHA_CORRETA:
+            st.session_state["logado"] = True
+            st.rerun()
+        else:
+            st.error("Usuário ou senha inválidos")
+
+def verificar_login():
+    if "logado" not in st.session_state:
+        st.session_state["logado"] = False
+
+    if not st.session_state["logado"]:
+        tela_login()
+        st.stop()
+
+# chama o login
+verificar_login()
+
+
+
 st.set_page_config(page_title="Molina | Busca de Clientes", page_icon="🔎", layout="wide")
 
 BASE_ARQUIVO = "Relatorio Pessoa Fisica - LegalOne.xlsx"
