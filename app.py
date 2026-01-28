@@ -65,9 +65,12 @@ def kpi_card(title, value, sub=""):
     """, unsafe_allow_html=True)
 
 def norm_cpf(val):
-    if pd.isna(val):
+    if val is None:
         return ""
-    return re.sub(r"\\D", "", str(val))
+    s = str(val)
+    if s.lower() in ("nan", "none"):
+        return ""
+    return re.sub(r"\D", "", s)
 
 def norm_text(val):
     if pd.isna(val):
